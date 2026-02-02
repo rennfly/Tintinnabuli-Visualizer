@@ -31,7 +31,6 @@ export const parseMidi = (arrayBuffer: ArrayBuffer): NoteEvent[] => {
   }
 };
 
-// Generate Mock Data
 export const generateMockNotes = (): NoteEvent[] => {
   const notes: NoteEvent[] = [];
   let time = 0;
@@ -61,7 +60,7 @@ export const generateMockNotes = (): NoteEvent[] => {
   return notes;
 };
 
-// --- DRAWING FUNCTIONS (Pure) ---
+// --- DRAWING FUNCTIONS ---
 
 export const drawPianoRoll = (
   ctx: CanvasRenderingContext2D,
@@ -73,14 +72,12 @@ export const drawPianoRoll = (
   height: number
 ) => {
   ctx.save();
-  
-  // Clear background
   ctx.fillStyle = backgroundColor;
   ctx.fillRect(0, 0, width, height);
 
-  const isDarkBg = parseInt(backgroundColor.replace('#', ''), 16) < 0xffffff / 2;
+  const bgLum = getHexLuminance(backgroundColor);
+  const isDarkBg = bgLum < 128;
 
-  // Config
   const TIME_WINDOW = 10; 
   const PX_PER_SEC = width / TIME_WINDOW;
   const MIN_NOTE = 21; 
@@ -93,11 +90,10 @@ export const drawPianoRoll = (
   ctx.beginPath();
   ctx.moveTo(PLAYHEAD_X, 0);
   ctx.lineTo(PLAYHEAD_X, height);
-  ctx.lineWidth = 1; 
-  ctx.strokeStyle = isDarkBg ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+  ctx.lineWidth = Math.max(2, width * 0.002); 
+  ctx.strokeStyle = isDarkBg ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.3)';
   ctx.stroke();
 
-  // Notes
   notes.forEach(n => {
     const relativeTime = n.startTime - currentTime;
     const x = PLAYHEAD_X + (relativeTime * PX_PER_SEC);
@@ -105,20 +101,16 @@ export const drawPianoRoll = (
     const noteIndex = n.note - MIN_NOTE;
     const y = height - (noteIndex * NOTE_HEIGHT) - NOTE_HEIGHT;
 
-    // Visibility Check
     if (x + w > -100 && x < width + 100) {
-      
       const discriminator = (n.track || 0) + (n.channel || 0);
       const colorIdx = discriminator % palette.length;
       const fillStyle = palette[colorIdx];
       const isActive = currentTime >= n.startTime && currentTime <= (n.startTime + n.duration);
 
       if (isActive) {
-         // Active
          ctx.shadowBlur = 15;
          ctx.shadowColor = fillStyle;
          ctx.fillStyle = isDarkBg ? '#ffffff' : fillStyle;
-         
          if (ctx.roundRect) {
               ctx.beginPath();
               ctx.roundRect(x - 1, y - 1, w + 2, NOTE_HEIGHT * 0.85 + 2, 4);
@@ -128,14 +120,12 @@ export const drawPianoRoll = (
           }
           ctx.shadowBlur = 0;
       } else {
-         // Passive
          ctx.fillStyle = fillStyle;
          ctx.globalAlpha = 0.9; 
          ctx.shadowBlur = 4;
          ctx.shadowColor = isDarkBg ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.1)';
          ctx.shadowOffsetX = 2;
          ctx.shadowOffsetY = 2;
-
          if (ctx.roundRect) {
               ctx.beginPath();
               ctx.roundRect(x, y, w, NOTE_HEIGHT * 0.85, 3);
@@ -143,7 +133,6 @@ export const drawPianoRoll = (
           } else {
               ctx.fillRect(x, y, w, NOTE_HEIGHT * 0.85);
           }
-
           ctx.globalAlpha = 1.0;
           ctx.shadowBlur = 0;
           ctx.shadowOffsetX = 0;
@@ -151,31 +140,26 @@ export const drawPianoRoll = (
       }
     }
   });
-  
   ctx.restore();
 };
 
 export const drawOscilloscope = (
   ctx: CanvasRenderingContext2D,
   analyser: AnalyserNode | null,
-  dataArray: Uint8Array,
   isPlaying: boolean,
   color: string,
   backgroundColor: string,
-  sensitivity: number,
   width: number,
   height: number
 ) => {
   ctx.save();
-  
   ctx.fillStyle = backgroundColor;
   ctx.fillRect(0, 0, width, height);
 
-  ctx.lineWidth = 2;
-  ctx.strokeStyle = color;
-  ctx.beginPath();
-
   if (!analyser || !isPlaying) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
     ctx.moveTo(0, height / 2);
     ctx.lineTo(width, height / 2);
     ctx.stroke();
@@ -183,67 +167,68 @@ export const drawOscilloscope = (
     return;
   }
 
-  // Note: We assume getByteTimeDomainData is called outside or we call it here if needed.
-  // Ideally, for pure function, data should be passed in. 
-  // But if passed array is empty/stale, we might need to fetch. 
-  // However, pure functions shouldn't mutate external state ideally.
-  // We will assume dataArray is populated by the caller.
+  const bufferLength = analyser.frequencyBinCount;
+  const dataArray = new Uint8Array(bufferLength);
+  analyser.getByteTimeDomainData(dataArray);
 
-  const bufferLength = dataArray.length;
-  if (bufferLength === 0) {
-      ctx.restore();
-      return;
-  }
-
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
   const sliceWidth = width * 1.0 / bufferLength;
   let x = 0;
-
   for (let i = 0; i < bufferLength; i++) {
-    const deviation = dataArray[i] - 128;
-    const scaledDeviation = deviation * sensitivity;
-    const finalY = (height / 2) + scaledDeviation;
-
-    if (i === 0) {
-      ctx.moveTo(x, finalY);
-    } else {
-      ctx.lineTo(x, finalY);
-    }
+    const v = dataArray[i] / 128.0;
+    const y = v * height / 2;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
     x += sliceWidth;
   }
-
   ctx.lineTo(width, height / 2);
   ctx.stroke();
   ctx.restore();
 };
 
-// --- Theme Generation Logic ---
+// --- Color Helpers ---
 
-const getPixelData = (imgSrc: string): Promise<Uint8ClampedArray> => {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = "Anonymous";
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (!ctx) { reject('No context'); return; }
-      canvas.width = 50; 
-      canvas.height = 50;
-      ctx.drawImage(img, 0, 0, 50, 50);
-      resolve(ctx.getImageData(0, 0, 50, 50).data);
-    };
-    img.onerror = reject;
-    img.src = imgSrc;
-  });
+const getHexLuminance = (hex: string) => {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return 0;
+  return 0.2126 * rgb.r + 0.7152 * rgb.g + 0.0722 * rgb.b;
+};
+
+const hexToRgb = (hex: string) => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16)
+  } : null;
 };
 
 const rgbToHex = (r: number, g: number, b: number) => 
-  '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+  '#' + [r, g, b].map(x => Math.min(255, Math.max(0, Math.round(x))).toString(16).padStart(2, '0')).join('');
 
-const getLuminance = (r: number, g: number, b: number) => {
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+const adjustColor = (hex: string, brightness: number, contrast: number) => {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return hex;
+
+  const bFactor = (brightness - 100) * 1.5;
+  const cFactor = (contrast / 100);
+
+  const adjust = (val: number) => {
+    let v = (val - 128) * cFactor + 128;
+    v = v + bFactor;
+    return v;
+  };
+
+  return rgbToHex(adjust(rgb.r), adjust(rgb.g), adjust(rgb.b));
 };
 
-export const generateThemeFromImage = async (imgSrc: string | null): Promise<ThemePalette> => {
+export const generateThemeFromImage = async (
+  imgSrc: string | null, 
+  brightness: number = 100, 
+  contrast: number = 100
+): Promise<ThemePalette> => {
   if (!imgSrc) return DEFAULT_THEME;
 
   try {
@@ -257,63 +242,58 @@ export const generateThemeFromImage = async (imgSrc: string | null): Promise<The
       const g = Math.round(data[i + 1] / 10) * 10;
       const b = Math.round(data[i + 2] / 10) * 10;
       const key = `${r},${g},${b}`;
-      
       colorCounts[key] = (colorCounts[key] || 0) + 1;
-      
       if (colorCounts[key] > maxCount) {
         maxCount = colorCounts[key];
         dominantColor = { r: data[i], g: data[i+1], b: data[i+2] };
       }
     }
 
-    const bgHex = rgbToHex(dominantColor.r, dominantColor.g, dominantColor.b);
-    const bgLum = getLuminance(dominantColor.r, dominantColor.g, dominantColor.b);
-    const isDarkBg = bgLum < 128;
-
-    const potentialColors: {r:number, g:number, b:number, dist: number}[] = [];
-
-    for (let i = 0; i < data.length; i += 40) { 
-      const r = data[i];
-      const g = data[i+1];
-      const b = data[i+2];
-      
-      const dist = Math.sqrt(
-        Math.pow(r - dominantColor.r, 2) + 
-        Math.pow(g - dominantColor.g, 2) + 
-        Math.pow(b - dominantColor.b, 2)
-      );
-
-      if (dist > 50) { 
-        potentialColors.push({ r, g, b, dist });
-      }
+    const rawBgHex = rgbToHex(dominantColor.r, dominantColor.g, dominantColor.b);
+    const bgHex = adjustColor(rawBgHex, brightness, contrast);
+    
+    const potentialColors: string[] = [];
+    for (let i = 0; i < data.length; i += 100) { 
+      const hex = rgbToHex(data[i], data[i+1], data[i+2]);
+      if (!potentialColors.includes(hex)) potentialColors.push(hex);
     }
 
-    potentialColors.sort((a, b) => b.dist - a.dist);
-
-    const tracks: string[] = [];
-    const fallbackColor = isDarkBg ? '#ffffff' : '#000000';
+    const bgLum = getHexLuminance(bgHex);
+    const isDarkBg = bgLum < 128;
     
-    if (potentialColors.length === 0) {
-        tracks.push(fallbackColor, isDarkBg ? '#cccccc' : '#333333');
-    } else {
-        potentialColors.forEach(c => {
-             if (tracks.length < 5) {
-                 const hex = rgbToHex(c.r, c.g, c.b);
-                 if (!tracks.includes(hex)) tracks.push(hex);
-             }
-        });
-        if (tracks.length < 2) tracks.push(fallbackColor);
+    const filteredTracks = potentialColors
+      .map(hex => adjustColor(hex, isDarkBg ? 150 : 50, contrast)) 
+      .slice(0, 5);
+
+    if (filteredTracks.length < 2) {
+      filteredTracks.push(isDarkBg ? '#ffffff' : '#000000');
     }
 
     return {
       background: bgHex,
-      scope: tracks[0],
-      text: tracks[0],
-      tracks: tracks
+      scope: filteredTracks[0],
+      text: filteredTracks[0],
+      tracks: filteredTracks
     };
-
   } catch (e) {
-    console.warn("Could not extract colors", e);
+    console.warn("Theme extraction failed", e);
     return DEFAULT_THEME;
   }
+};
+
+const getPixelData = (imgSrc: string): Promise<Uint8ClampedArray> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "Anonymous";
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { reject('No context'); return; }
+      canvas.width = 50; canvas.height = 50;
+      ctx.drawImage(img, 0, 0, 50, 50);
+      resolve(ctx.getImageData(0, 0, 50, 50).data);
+    };
+    img.onerror = reject;
+    img.src = imgSrc;
+  });
 };

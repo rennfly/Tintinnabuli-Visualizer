@@ -6,7 +6,6 @@ interface OscilloscopeProps {
   isPlaying: boolean;
   color: string;
   backgroundColor: string;
-  sensitivity: number;
   width: number;
   height: number;
 }
@@ -16,7 +15,6 @@ const Oscilloscope: React.FC<OscilloscopeProps> = ({
   isPlaying,
   color,
   backgroundColor,
-  sensitivity,
   width,
   height
 }) => {
@@ -36,28 +34,9 @@ const Oscilloscope: React.FC<OscilloscopeProps> = ({
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.scale(dpr, dpr);
     
-    const bufferLength = analyser ? analyser.frequencyBinCount : 0;
-    const dataArray = analyser ? new Uint8Array(bufferLength) : new Uint8Array(0);
-
     const draw = () => {
       reqIdRef.current = requestAnimationFrame(draw);
-      
-      // Update data
-      if (analyser) {
-        analyser.getByteTimeDomainData(dataArray);
-      }
-
-      drawOscilloscope(
-        ctx, 
-        analyser, 
-        dataArray, 
-        isPlaying, 
-        color, 
-        backgroundColor, 
-        sensitivity, 
-        width, 
-        height
-      );
+      drawOscilloscope(ctx, analyser, isPlaying, color, backgroundColor, width, height);
     };
 
     draw();
@@ -65,7 +44,7 @@ const Oscilloscope: React.FC<OscilloscopeProps> = ({
     return () => {
       if (reqIdRef.current) cancelAnimationFrame(reqIdRef.current);
     };
-  }, [analyser, isPlaying, color, backgroundColor, sensitivity, width, height]);
+  }, [analyser, isPlaying, color, backgroundColor, width, height]);
 
   return <canvas ref={canvasRef} className="block w-full h-full" />;
 };
