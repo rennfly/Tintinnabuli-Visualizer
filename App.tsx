@@ -10,6 +10,7 @@ const App: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isCountingDown, setIsCountingDown] = useState(false);
   const [countdown, setCountdown] = useState(3);
+  const [hideUI, setHideUI] = useState(false);
   
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const [audioBuffer, setAudioBuffer] = useState<AudioBuffer | null>(null);
@@ -143,6 +144,7 @@ const App: React.FC = () => {
     setCountdown(3);
     setIsCountingDown(true);
     setShowSettings(false); 
+    setHideUI(true);
   };
 
   const handleStop = () => {
@@ -193,15 +195,18 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* BOUTON PARAMÈTRES ADAPTATIF */}
-      <div className="absolute top-4 right-4 z-50">
+      {/* BOUTON PARAMÈTRES ADAPTATIF AVEC ZONE REACTIVE */}
+      <div 
+        className="absolute top-4 right-4 z-50 w-20 h-20 flex items-center justify-center" 
+        onMouseEnter={() => setHideUI(false)}
+      >
          <button 
            onClick={() => setShowSettings(!showSettings)} 
-           className={`p-3 rounded-full transition-all duration-300 shadow-xl hover:scale-105 active:scale-95 group ${
+           className={`p-3 rounded-full transition-all duration-500 shadow-xl hover:scale-105 active:scale-95 group ${
              isDarkUI 
-               ? 'bg-white text-black hover:bg-stone-200 shadow-white/10' // Fond sombre -> Bouton Blanc, Roue Noire
-               : 'bg-black text-white hover:bg-stone-800 shadow-black/20' // Fond clair -> Bouton Noir, Roue Blanche
-           }`}
+               ? 'bg-white text-black hover:bg-stone-200 shadow-white/10' 
+               : 'bg-black text-white hover:bg-stone-800 shadow-black/20'
+           } ${hideUI ? 'opacity-0 scale-75 pointer-events-none' : 'opacity-100 scale-100 pointer-events-auto'}`}
            aria-label="Settings"
          >
            <SettingsIcon size={24} strokeWidth={2} />
