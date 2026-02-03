@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useLayoutEffect } from 'react';
 import { Play, Pause, Square, Settings as SettingsIcon, Timer, ZoomIn, MoveVertical, Activity } from 'lucide-react';
 import { AppSettings, NoteEvent, DEFAULT_THEME, ThemePalette } from './types';
-import { parseMidi, generateMockNotes, generateThemeFromImage } from './utils';
+import { parseMidi, generateMockNotes, generateThemeFromImage, getHexLuminance } from './utils';
 import PianoRoll from './components/PianoRoll';
 import Oscilloscope from './components/Oscilloscope';
 
@@ -44,6 +44,14 @@ const App: React.FC = () => {
   const activeTheme = useMemo(() => {
     return settings.themeMode === 'image' ? generatedTheme : DEFAULT_THEME;
   }, [settings.themeMode, generatedTheme]);
+
+  const isLandscape = settings.aspectRatio === '16:9';
+
+  // Calculate UI contrast based on actual background behind the button
+  const isDarkUI = useMemo(() => {
+    const effectiveBg = isLandscape ? '#111111' : activeTheme.background;
+    return getHexLuminance(effectiveBg) < 128;
+  }, [isLandscape, activeTheme.background]);
 
   // Dynamically adjust title font size
   useLayoutEffect(() => {
@@ -154,8 +162,6 @@ const App: React.FC = () => {
     }
   };
 
-  const isLandscape = settings.aspectRatio === '16:9';
-  
   const dims = isLandscape 
     ? { piano: { w: 1920, h: 1080 }, scope: { w: 800, h: 600 } } 
     : { piano: { w: 1080, h: 1920 }, scope: { w: 1080, h: 600 } };
@@ -187,8 +193,16 @@ const App: React.FC = () => {
         </div>
       )}
 
+      {/* BOUTON PARAMÈTRES ADAPTATIF */}
       <div className="absolute top-4 right-4 z-50">
-         <button onClick={() => setShowSettings(!showSettings)} className="p-3 backdrop-blur-md rounded-full transition-all border border-transparent hover:border-white/20 bg-white/10 text-white">
+         <button 
+           onClick={() => setShowSettings(!showSettings)} 
+           className={`p-3 backdrop-blur-md rounded-full transition-all border shadow-sm ${
+             isDarkUI 
+               ? 'border-white/10 hover:border-white/20 bg-white/10 text-white' 
+               : 'border-black/5 hover:border-black/10 bg-black/5 text-stone-800'
+           }`}
+         >
            <SettingsIcon size={24} />
          </button>
       </div>

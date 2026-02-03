@@ -191,13 +191,13 @@ export const drawOscilloscope = (
 
 // --- Color Helpers ---
 
-const getHexLuminance = (hex: string) => {
+export const getHexLuminance = (hex: string) => {
   const rgb = hexToRgb(hex);
   if (!rgb) return 0;
   return 0.2126 * rgb.r + 0.7152 * rgb.g + 0.0722 * rgb.b;
 };
 
-const hexToRgb = (hex: string) => {
+export const hexToRgb = (hex: string) => {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return result ? {
     r: parseInt(result[1], 16),
