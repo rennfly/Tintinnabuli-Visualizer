@@ -1,20 +1,36 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# 🎹 Tintinnabuli Visualizer
 
-# Run and deploy your AI Studio app
+A minimalist, aesthetic MIDI and Audio visualizer inspired by minimalism musical style. Designed for musicians, content creators, and music lovers who want an elegant visual presentation for their compositions.
 
-This contains everything you need to run your app locally.
+## ✨ Features
 
-View your app in AI Studio: https://ai.studio/apps/drive/1f4TVdck_UFlYufZ2ka1wgAiq90jlMD4J
+*   **Immersive Piano Roll**: Smooth, high-performance rendering of MIDI notes with a soft, organic feel.
+*   **Reactive Oscilloscope**: Real-time waveform visualization with adjustable line width—from ultra-fine "laser" lines to thick, hand-drawn styles.
+*   **Intelligent Layouts**:
+    *   **16:9 Landscape**: A balanced grid layout perfect for YouTube or desktop screens.
+    *   **9:16 Portrait**: A full-bleed, edge-to-edge layout optimized for TikTok, Reels, and YouTube Shorts.
+*   **Image-Driven Theme Engine**: Upload an album cover and the app automatically extracts a harmonious color palette, adjusting the background, notes, and oscilloscope colors.
+*   **Advanced Customization**:
+    *   Tweak brightness and contrast of the generated themes.
+    *   Real-time image cropping (Zoom and Y-Offset) for the perfect cover art framing.
+    *   Self-scaling title system to ensure legibility regardless of text length.
+*   **Recording-Friendly**: Includes a 3-second countdown timer to help you start your screen recordings perfectly.
 
-## Run Locally
+## 🚀 How to Use
 
-**Prerequisites:**  Node.js
+1.  **Audio**: Load your audio file (MP3, WAV, etc.).
+2.  **MIDI**: Load the corresponding MIDI file to synchronize the visual notes.
+3.  **Visuals**: Upload a cover image to generate a customized atmosphere.
+4.  **Settings**: Customize your title, line thickness, and choose your format (16:9 or 9:16).
+5.  **Play**: Hit play and start your screen capture!
 
+## 🛠️ Tech Stack
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+*   **React** & **Tailwind CSS** for the interface.
+*   **Canvas API** for high-performance 60fps rendering.
+*   **Web Audio API** for real-time spectral analysis.
+*   **@tonejs/midi** for precise musical data parsing.
+
+---
+
+*Note: This project focuses on aesthetics and contemplation, turning any musical piece into a beautiful visual experience.*
